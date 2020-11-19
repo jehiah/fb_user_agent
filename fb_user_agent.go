@@ -1,9 +1,10 @@
+// fb_user_agent provides a parser for the Facebook User-Agent suffix added by Facebook Applications
 package fb_user_agent
 
 import (
 	"errors"
-	"strings"
 	"fmt"
+	"strings"
 )
 
 // Based on http://mpulp.mobi/2012/01/funky-user-agent-on-facebook-iphone-app/
@@ -24,14 +25,24 @@ type FBUserAgent struct {
 	FBCA               string
 	FBDM               string // {density=3.0,width=1080,height=1920}
 	FBPN               string // com.facebook.katana
+	FBRV               string
+}
+
+func IsFBUserAgent(ua string) bool {
+	return strings.Contains(ua, "[FBAN/") || strings.Contains(ua, "[FB_IAB/")
 }
 
 func ParseFBUserAgent(ua string) (FBUserAgent, error) {
 	f := FBUserAgent{}
-	if !strings.Contains(ua, "[FBAN/") {
+
+	u := ua
+	if strings.Contains(ua, "[FBAN/") {
+		u = u[strings.Index(u, "[FBAN/"):]
+	} else if strings.Contains(ua, "[FB_IAB") {
+		u = u[strings.Index(u, "[FB_IAB/"):]
+	} else {
 		return f, errors.New("Not a valid Facebook User-Agent")
 	}
-	u := ua[strings.Index(ua, "[FBAN/"):]
 	u = strings.Trim(u, "[]")
 	chunks := strings.Split(u, ";")
 	if len(chunks) < 3 {
@@ -54,7 +65,7 @@ func ParseFBUserAgent(ua string) (FBUserAgent, error) {
 		switch key {
 		case "":
 			continue
-		case "FBAN":
+		case "FBAN", "FB_IAB":
 			f.ApplicationName = data[1]
 		case "FBAV":
 			f.ApplicationVersion = data[1]
@@ -86,6 +97,8 @@ func ParseFBUserAgent(ua string) (FBUserAgent, error) {
 			f.FBDM = data[1]
 		case "FBPN":
 			f.FBPN = data[1]
+		case "FBRV":
+			f.FBRV = data[1]
 		default:
 			return f, fmt.Errorf("unknown %v:%q in %q", data[0], data[1], ua)
 		}
